@@ -1,0 +1,107 @@
+= javascript_include_tag "three"
+= javascript_include_tag "TrackBallControls"
+= javascript_include_tag "STLloader"
+= javascript_include_tag "threejsfunctions"
+
+
+
+%h1{style: "text-align:center;"} Loading stl files in rails :
+
+%br/
+
+#canvasWrapper
+  #title Canvas :
+%div{style: "margin-left:auto;margin-right:auto;text-align:center;"}
+  %button#moveCameraLeft
+    %span.glyphicon.glyphicon-arrow-left
+  %button#moveCameraRight
+    %span.glyphicon.glyphicon-arrow-right
+  %button#moveCameraUp
+    %span.glyphicon.glyphicon-arrow-up
+  %button#moveCameraDown
+    %span.glyphicon.glyphicon-arrow-down
+%h4{style: "text-align:center;"} scroll to zoom in and out
+%h4{style: "text-align:center;"} click and drag to rotate 
+
+:coffee
+  # Our Javascript will go here.
+
+  # width heigh, ensure resolution is alway width/height (in camera)
+
+  # SetClearColor : color, alpha (alpha does not work with webGL)
+
+  animate = ->
+    requestAnimationFrame animate
+    controls.update()
+
+  render = ->
+    renderer.render scene, camera
+
+  scene = new THREE.Scene()
+  camera = new THREE.PerspectiveCamera(75, 5 / 3, 0.001, 100000)
+
+  controls = new THREE.TrackballControls(camera)
+  controls.rotateSpeed = 5.0
+  controls.zoomSpeed = 1.2
+  controls.panSpeed = 0.8
+  controls.noZoom = false
+  controls.noPan = false
+  controls.staticMoving = false
+  controls.dynamicDampingFactor = 0.2
+  controls.keys = [65, 83, 68]
+  renderer = new THREE.CanvasRenderer()
+  controls.addEventListener "change", render
+
+  context = webgl_detect(1)
+  if context
+    renderer = new THREE.WebGLRenderer()
+  else
+    renderer = new THREE.CanvasRenderer()
+
+  renderer.setSize 500, 300
+  renderer.setClearColor 0xf1f1f1, 1
+
+  document.getElementById("canvasWrapper").appendChild renderer.domElement
+
+  loader = new THREE.STLLoader()
+  geometry = null
+  shading = THREE.FlatShading
+  material = new THREE.MeshNormalMaterial(shading)
+  ambientLight = new THREE.AmbientLight(0xBBBBBB)
+  scene.add ambientLight
+
+  loader.addEventListener "load", (event) ->
+    geometry = event.content
+    mesh = new THREE.Mesh(geometry, material)
+    mesh.scale.set 1, 1, 1
+    scene.add mesh
+    camera.position.z = 100
+    render()
+
+  loader.load "#{ @selectedFile.stlfile.url }"
+  animate()
+
+  $("#moveCameraLeft").click ->
+    camera.position.x = camera.position.x + 5
+
+  $("#moveCameraRight").click ->
+    camera.position.x = camera.position.x - 5
+
+  $("#moveCameraDown").click ->
+    camera.position.y = camera.position.y + 5
+
+  $("#moveCameraUp").click ->
+    camera.position.y = camera.position.y - 5
+
+- (0..@allModels.count-1).each do |i|
+  = link_to @allModels[i].stlfile_file_name , home_index_path(:selectedFile => @allModels[i].id)
+
+
+
+
+%h3 Upload New Model :
+
+= form_for :file, :url => save_path, :html => { :multipart => true } do |form|
+  = form.file_field :stlfile
+  = form.submit
+
